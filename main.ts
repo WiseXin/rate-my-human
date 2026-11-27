@@ -11,18 +11,35 @@ const ENTRY =
   "Five stars. He gives impossible deadlines, changes his mind mid-sentence, and still says \"good job\" like he means it. Would be managed again.";
 
 const MAX_CHARS = 200;
-if ([...ENTRY].length > MAX_CHARS) {
+const entryChars = [...ENTRY].length;
+if (entryChars > MAX_CHARS) {
   throw new Error(
-    `entry is ${[...ENTRY].length} characters, over the ${MAX_CHARS} limit`,
+    `entry is ${entryChars} characters, over the ${MAX_CHARS} limit`,
   );
+}
+if (ENTRY.includes("\n") || ENTRY.includes("\r")) {
+  throw new Error("entry must be a single line");
 }
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "out";
 mkdirSync(outDir, { recursive: true });
 const outPath = join(outDir, "entry.txt");
-writeFileSync(outPath, ENTRY + "\n", "utf8");
+const payload = ENTRY + "\n";
+writeFileSync(outPath, payload, "utf8");
+
 // Read it back: the file the judge reads must be exactly the line above.
-if (readFileSync(outPath, "utf8") !== ENTRY + "\n") {
+const written = readFileSync(outPath, "utf8");
+if (written !== payload) {
   throw new Error(`wrote ${outPath} but its bytes do not match the entry`);
+}
+// Byte-level check: the on-disk file must be exactly the entry plus one
+// trailing newline — no extra bytes, no missing newline.
+if (Buffer.byteLength(written, "utf8") !== Buffer.byteLength(payload, "utf8")) {
+  throw new Error(
+    `wrote ${outPath} but its byte length does not match the entry`,
+  );
+}
+if (!written.endsWith("\n") || written.endsWith("\n\n")) {
+  throw new Error(`wrote ${outPath} but it does not end with exactly one newline`);
 }
 console.log(ENTRY);
